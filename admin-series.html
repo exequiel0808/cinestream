@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Series — CineStream</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600&family=Nunito:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg: #090b0f;
+      --bg2: #0f1319;
+      --bg3: #141920;
+      --accent: #e50914;
+      --text: #f0f0f0;
+      --text2: #9ba3b2;
+      --border: rgba(255,255,255,0.07);
+      --font-h: 'Oswald', sans-serif;
+      --font-b: 'Nunito', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font-b);
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    h1 {
+      font-family: var(--font-h);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .form {
+      background: var(--bg2);
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+
+    input {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: white;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      margin-top: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .card {
+      background: var(--bg2);
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border);
+    }
+
+    .actions {
+      margin-top: 10px;
+    }
+
+    .delete {
+      background: #ff4444;
+    }
+
+    .edit {
+      background: #2563eb;
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1>📺 Administrar Series</h1>
+
+  <!-- FORM -->
+  <div class="form">
+    <input id="title" placeholder="Título">
+    <input id="year" placeholder="Año">
+    <input id="genre" placeholder="Género">
+    <input id="poster" placeholder="Poster URL">
+
+    <button onclick="saveSeries()">Guardar Serie</button>
+  </div>
+
+  <!-- LIST -->
+  <div id="list"></div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://hitfonmtelltpesotuhd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpdGZvbm10ZWxsdHBlc290dWhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzY0MjEsImV4cCI6MjA5MjkxMjQyMX0.Mc5r5VuIzZ27U0toY3WMD2dYdFFmix_1BHP84yIbVsQ';
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let editingId = null;
+
+async function loadSeries() {
+  const { data } = await db.from('series').select('*').order('created_at', { ascending: false });
+
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+
+  data.forEach(s => {
+    list.innerHTML += `
+      <div class="card">
+        <b>${s.title}</b> (${s.year})<br>
+        ${s.genre || ''}
+
+        <div class="actions">
+          <button class="edit" onclick="edit('${s.id}')">Editar</button>
+          <button class="delete" onclick="remove('${s.id}')">Eliminar</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+async function saveSeries() {
+  const title = document.getElementById('title').value;
+  const year = document.getElementById('year').value;
+  const genre = document.getElementById('genre').value;
+  const poster_url = document.getElementById('poster').value;
+
+  if (!title) return alert("Falta título");
+
+  if (editingId) {
+    await db.from('series').update({
+      title, year, genre, poster_url
+    }).eq('id', editingId);
+
+    editingId = null;
+  } else {
+    await db.from('series').insert([{
+      title, year, genre, poster_url
+    }]);
+  }
+
+  clearForm();
+  loadSeries();
+}
+
+function edit(id) {
+  editingId = id;
+
+  db.from('series').select('*').eq('id', id).single().then(({ data }) => {
+    document.getElementById('title').value = data.title;
+    document.getElementById('year').value = data.year;
+    document.getElementById('genre').value = data.genre;
+    document.getElementById('poster').value = data.poster_url;
+  });
+}
+
+async function remove(id) {
+  if (!confirm("¿Eliminar serie?")) return;
+
+  await db.from('series').delete().eq('id', id);
+  loadSeries();
+}
+
+function clearForm() {
+  document.getElementById('title').value = '';
+  document.getElementById('year').value = '';
+  document.getElementById('genre').value = '';
+  document.getElementById('poster').value = '';
+}
+
+loadSeries();
+</script>
+
+</body>
+</html>

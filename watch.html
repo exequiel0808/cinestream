@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reproducir — CineStream</title>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600&family=Nunito:wght@300;400;600&display=swap" rel="stylesheet">
+
+<!-- Plyr -->
+<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  margin: 0;
+  background: #000;
+  font-family: 'Nunito', sans-serif;
+  color: white;
+}
+
+.player-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+}
+
+.top-bar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+}
+
+.back-btn {
+  background: rgba(0,0,0,0.6);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="player-container">
+
+  <div class="top-bar">
+    <div class="back-btn" onclick="history.back()">← Volver</div>
+  </div>
+
+  <video id="player" controls playsinline></video>
+
+</div>
+
+<!-- HLS -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+
+<script>
+const SUPABASE_URL = 'https://hitfonmtelltpesotuhd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpdGZvbm10ZWxsdHBlc290dWhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzY0MjEsImV4cCI6MjA5MjkxMjQyMX0.Mc5r5VuIzZ27U0toY3WMD2dYdFFmix_1BHP84yIbVsQ';
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const video = document.getElementById('player');
+const player = new Plyr(video);
+
+const params = new URLSearchParams(window.location.search);
+const url = params.get('url'); // video url
+const type = params.get('type'); // movie | series | live
+
+// ===== REPRODUCCIÓN =====
+function loadVideo(src) {
+  if (src.endsWith('.m3u8')) {
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(src);
+      hls.attachMedia(video);
+    } else {
+      video.src = src;
+    }
+  } else {
+    video.src = src;
+  }
+}
+
+// ===== GUARDAR PROGRESO =====
+async function saveProgress() {
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) return;
+
+  await db.from('watch_history').upsert({
+    user_id: user.id,
+    video_url: url,
+    progress: video.currentTime
+  });
+}
+
+// ===== CARGAR PROGRESO =====
+async function loadProgress() {
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) return;
+
+  const { data } = await db
+    .from('watch_history')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('video_url', url)
+    .single();
+
+  if (data && data.progress) {
+    video.currentTime = data.progress;
+  }
+}
+
+// ===== EVENTOS =====
+video.addEventListener('timeupdate', () => {
+  if (Math.floor(video.currentTime) % 10 === 0) {
+    saveProgress();
+  }
+});
+
+video.addEventListener('loadedmetadata', loadProgress);
+
+// ===== INIT =====
+if (!url) {
+  alert("No hay video");
+} else {
+  loadVideo(url);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineStream — Películas, Series y TV en Vivo</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Nunito:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* ═══════════════════════════════════════
+       CSS VARIABLES & RESET
+    ═══════════════════════════════════════ */
+    :root {
+      --bg-primary:    #090b0f;
+      --bg-secondary:  #0f1319;
+      --bg-card:       #141920;
+      --bg-hover:      #1c2330;
+      --accent:        #e50914;
+      --accent-hover:  #f40612;
+      --accent-dim:    rgba(229, 9, 20, 0.15);
+      --gold:          #f5a623;
+      --text-primary:  #f0f0f0;
+      --text-secondary:#9ba3b2;
+      --text-muted:    #5a6272;
+      --border:        rgba(255,255,255,0.07);
+      --nav-height:    68px;
+      --radius:        10px;
+      --shadow:        0 8px 32px rgba(0,0,0,0.6);
+      --font-head:     'Oswald', sans-serif;
+      --font-body:     'Nunito', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    a { text-decoration: none; color: inherit; }
+    img { display: block; max-width: 100%; }
+    button { cursor: pointer; border: none; background: none; font-family: var(--font-body); }
+
+    /* ═══════════════════════════════════════
+       SCROLLBAR
+    ═══════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: #2a3042; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    /* ═══════════════════════════════════════
+       NAVBAR
+    ═══════════════════════════════════════ */
+    .navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--nav-height);
+      display: flex;
+      align-items: center;
+      padding: 0 5%;
+      z-index: 1000;
+      transition: background 0.3s, box-shadow 0.3s;
+      background: linear-gradient(to bottom, rgba(9,11,15,0.95) 0%, transparent 100%);
+    }
+    .navbar.scrolled {
+      background: rgba(9,11,15,0.97);
+      box-shadow: 0 2px 20px rgba(0,0,0,0.8);
+    }
+
+    .nav-logo {
+      font-family: var(--font-head);
+      font-size: 1.7rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-right: 40px;
+      white-space: nowrap;
+    }
+    .nav-logo span { color: var(--text-primary); }
+
+    .nav-links {
+      display: flex;
+      gap: 6px;
+      list-style: none;
+      flex: 1;
+    }
+    .nav-links a {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: color 0.2s, background 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.06);
+    }
+    .nav-links a.active { color: var(--accent); }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .nav-search {
+      position: relative;
+    }
+    .nav-search input {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 14px 7px 36px;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.84rem;
+      width: 200px;
+      transition: all 0.3s;
+      outline: none;
+    }
+    .nav-search input:focus {
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(229,9,20,0.5);
+      width: 240px;
+    }
+    .nav-search input::placeholder { color: var(--text-muted); }
+    .nav-search svg {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .btn-login {
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+    .btn-login:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
+
+    .btn-register {
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      background: var(--accent);
+      color: #fff;
+      transition: all 0.2s;
+    }
+    .btn-register:hover { background: var(--accent-hover); transform: translateY(-1px); }
+
+    /* Avatar (cuando está logueado) */
+    .user-avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.2s;
+    }
+    .user-avatar:hover { border-color: var(--accent); }
+
+    /* ═══════════════════════════════════════
+       HERO SECTION
+    ═══════════════════════════════════════ */
+    .hero {
+      position: relative;
+      height: 92vh;
+      min-height: 560px;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background-image: url('https://image.tmdb.org/t/p/original/1E5baAaEse26fej7uHcjOgEE2t2.jpg');
+      background-size: cover;
+      background-position: center top;
+      filter: brightness(0.45);
+      transform: scale(1.03);
+      transition: transform 8s ease;
+    }
+    .hero:hover .hero-bg { transform: scale(1.0); }
+
+    .hero-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        var(--bg-primary) 0%,
+        rgba(9,11,15,0.7) 30%,
+        rgba(9,11,15,0.1) 60%,
+        transparent 100%
+      );
+    }
+    .hero-gradient-left {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to right,
+        rgba(9,11,15,0.9) 0%,
+        rgba(9,11,15,0.4) 40%,
+        transparent 70%
+      );
+    }
+
+    .hero-content {
+      position: relative;
+      padding: 0 5% 80px;
+      max-width: 580px;
+      z-index: 1;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(229,9,20,0.3);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+
+    .hero-title {
+      font-family: var(--font-head);
+      font-size: clamp(2.4rem, 5vw, 4rem);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.8);
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .hero-meta span {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    .hero-rating {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--gold) !important;
+      font-weight: 700 !important;
+    }
+    .hero-genres { display: flex; gap: 6px; flex-wrap: wrap; }
+    .genre-tag {
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.08);
+      font-size: 0.76rem;
+      color: var(--text-secondary);
+    }
+
+    .hero-desc {
+      font-size: 0.94rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-play {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 28px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-family: var(--font-head);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-play:hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(229,9,20,0.4); }
+
+    .btn-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 24px;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      border-radius: 8px;
+      font-family: var(--font-head);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.1);
+      cursor: pointer;
+    }
+    .btn-info:hover { background: rgba(255,255,255,0.18); transform: translateY(-2px); }
+
+    /* ═══════════════════════════════════════
+       MAIN CONTENT
+    ═══════════════════════════════════════ */
+    .main-content {
+      padding: 0 5% 60px;
+    }
+
+    /* ═══════════════════════════════════════
+       SECTIONS (rows de contenido)
+    ═══════════════════════════════════════ */
+    .section {
+      margin-bottom: 50px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-family: var(--font-head);
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title::before {
+      content: '';
+      display: block;
+      width: 4px;
+      height: 22px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    .section-link {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+      transition: color 0.2s;
+    }
+    .section-link:hover { color: var(--accent); }
+
+    /* ═══════════════════════════════════════
+       CARDS GRID (scroll horizontal)
+    ═══════════════════════════════════════ */
+    .cards-row {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .cards-row::-webkit-scrollbar { height: 4px; }
+
+    /* ═══════════════════════════════════════
+       MOVIE CARD
+    ═══════════════════════════════════════ */
+    .card {
+      flex: 0 0 180px;
+      scroll-snap-align: start;
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+      background: var(--bg-card);
+      group: card;
+    }
+    .card:hover {
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+      z-index: 2;
+    }
+
+    .card-img-wrap {
+      position: relative;
+      aspect-ratio: 2/3;
+      overflow: hidden;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s;
+    }
+    .card:hover .card-img-wrap img { transform: scale(1.06); }
+
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(9,11,15,0.95) 0%, transparent 50%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 12px;
+    }
+    .card:hover .card-overlay { opacity: 1; }
+
+    .card-play-btn {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 10px;
+      transition: transform 0.2s;
+    }
+    .card-play-btn:hover { transform: scale(1.1); }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .card-action-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+    .card-action-btn:hover { background: rgba(255,255,255,0.22); }
+
+    .card-badge {
+      position: absolute;
+      top: 8px; right: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .card-badge.hd { background: #1a6fc4; }
+    .card-badge.new { background: #16a34a; }
+
+    .card-info {
+      padding: 10px 10px 12px;
+    }
+    .card-title {
+      font-family: var(--font-head);
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+    .card-year { font-size: 0.75rem; color: var(--text-muted); }
+    .card-rating {
+      display: flex; align-items: center; gap: 3px;
+      font-size: 0.75rem; color: var(--gold); font-weight: 700;
+    }
+
+    /* ═══════════════════════════════════════
+       LIVE TV CARDS (landscape)
+    ═══════════════════════════════════════ */
+    .card-live {
+      flex: 0 0 240px;
+      scroll-snap-align: start;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .card-live:hover {
+      transform: translateY(-4px);
+      border-color: rgba(229,9,20,0.4);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+
+    .card-live-thumb {
+      position: relative;
+      aspect-ratio: 16/9;
+      background: var(--bg-hover);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .card-live-thumb img {
+      width: 60px; height: 60px;
+      object-fit: contain;
+      filter: brightness(0.9);
+    }
+    .live-indicator {
+      position: absolute;
+      top: 8px; left: 8px;
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(229,9,20,0.9);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      animation: blink 1.4s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    .card-live-info {
+      padding: 10px 12px 12px;
+    }
+    .card-live-name {
+      font-family: var(--font-head);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .card-live-cat {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* ═══════════════════════════════════════
+       FEATURED BANNER (segunda sección)
+    ═══════════════════════════════════════ */
+    .featured-banner {
+      border-radius: 14px;
+      overflow: hidden;
+      position: relative;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      padding: 0 5%;
+      margin-bottom: 50px;
+      cursor: pointer;
+    }
+    .featured-banner-bg {
+      position: absolute;
+      inset: 0;
+      background-image: url('https://image.tmdb.org/t/p/original/2meX1nMdScFOoV4370iu4fRNFay.jpg');
+      background-size: cover;
+      background-position: center 25%;
+      filter: brightness(0.35);
+    }
+    .featured-banner-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to right, rgba(9,11,15,0.85), transparent 60%);
+    }
+    .featured-banner-content { position: relative; }
+    .featured-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .featured-banner h2 {
+      font-family: var(--font-head);
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 14px;
+    }
+    .featured-banner-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 22px;
+      background: var(--accent);
+      border-radius: 7px;
+      font-family: var(--font-head);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+      transition: all 0.2s;
+    }
+    .featured-banner-btn:hover { background: var(--accent-hover); transform: translateX(3px); }
+
+    /* ═══════════════════════════════════════
+       LOADING SKELETON
+    ═══════════════════════════════════════ */
+    @keyframes shimmer {
+      0% { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-hover) 50%, var(--bg-card) 75%);
+      background-size: 800px 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius);
+    }
+    .skeleton-card { flex: 0 0 180px; height: 290px; }
+
+    /* ═══════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════ */
+    footer {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      padding: 50px 5% 30px;
+    }
+    .footer-top {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+    .footer-brand h3 {
+      font-family: var(--font-head);
+      font-size: 1.6rem;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .footer-brand h3 span { color: var(--text-primary); }
+    .footer-brand p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 240px;
+    }
+    .footer-col h4 {
+      font-family: var(--font-head);
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-col a {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+    .footer-col a:hover { color: var(--text-primary); }
+    .footer-bottom {
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-bottom p { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ═══════════════════════════════════════
+       MODAL (detalle de película)
+    ═══════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      overflow: hidden;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      animation: modalIn 0.3s ease;
+    }
+    @keyframes modalIn { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-backdrop {
+      position: relative;
+      height: 300px;
+      overflow: hidden;
+    }
+    .modal-backdrop img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      filter: brightness(0.5);
+    }
+    .modal-backdrop-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent, var(--bg-secondary));
+    }
+    .modal-close {
+      position: absolute;
+      top: 16px; right: 16px;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: #fff;
+      font-size: 1.1rem;
+      border: 1px solid rgba(255,255,255,0.15);
+      transition: background 0.2s;
+    }
+    .modal-close:hover { background: var(--accent); }
+    .modal-body { padding: 24px; }
+    .modal-title {
+      font-family: var(--font-head);
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .modal-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+    .modal-desc { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; margin-bottom: 22px; }
+    .modal-actions { display: flex; gap: 12px; }
+
+    /* ═══════════════════════════════════════
+       TOAST NOTIFICATIONS
+    ═══════════════════════════════════════ */
+    .toast-container {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 250px;
+      animation: toastIn 0.3s ease;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast.success { border-left: 3px solid #16a34a; }
+    .toast.error   { border-left: 3px solid var(--accent); }
+    .toast.info    { border-left: 3px solid #3b82f6; }
+
+    /* ═══════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .nav-search input { width: 150px; }
+      .footer-top { grid-template-columns: 1fr 1fr; }
+      .hero-content { max-width: 100%; }
+      .hero-title { font-size: 2rem; }
+    }
+    @media (max-width: 480px) {
+      .navbar { padding: 0 4%; }
+      .main-content { padding: 0 4% 40px; }
+      .footer-top { grid-template-columns: 1fr; }
+      .hero-content { padding: 0 4% 60px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ NAVBAR ═══ -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="nav-logo">CINE<span>STREAM</span></a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Inicio</a></li>
+      <li><a href="movies.html">Películas</a></li>
+      <li><a href="series.html">Series</a></li>
+      <li><a href="live.html">📡 TV en Vivo</a></li>
+    </ul>
+    <div class="nav-actions">
+      <div class="nav-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Buscar..." id="searchInput" autocomplete="off">
+      </div>
+      <!-- Se muestra si NO está logueado -->
+      <div id="authButtons">
+        <button class="btn-login" onclick="goTo('login.html')">Iniciar sesión</button>
+        <button class="btn-register" onclick="goTo('register.html')">Registrarse</button>
+      </div>
+      <!-- Se muestra si SÍ está logueado -->
+      <div id="userMenu" style="display:none; display:flex; align-items:center; gap:10px;">
+        <div class="user-avatar" id="userAvatar" title="Mi perfil" onclick="goTo('profile.html')">U</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══ HERO ═══ -->
+  <section class="hero" id="heroSection">
+    <div class="hero-bg" id="heroBg"></div>
+    <div class="hero-gradient"></div>
+    <div class="hero-gradient-left"></div>
+    <div class="hero-content">
+      <div class="hero-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        DESTACADO DE HOY
+      </div>
+      <h1 class="hero-title" id="heroTitle">Cargando...</h1>
+      <div class="hero-meta">
+        <span class="hero-rating" id="heroRating">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          8.5
+        </span>
+        <span id="heroYear">2024</span>
+        <span id="heroDuration">2h 15min</span>
+        <div class="hero-genres" id="heroGenres"></div>
+      </div>
+      <p class="hero-desc" id="heroDesc">Cargando descripción...</p>
+      <div class="hero-actions">
+        <button class="btn-play" id="heroPlayBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Ver ahora
+        </button>
+        <button class="btn-info" id="heroInfoBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Más info
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <main class="main-content">
+
+    <!-- Tendencias -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">🔥 Tendencias</h2>
+        <a href="movies.html" class="section-link">Ver todo →</a>
+      </div>
+      <div class="cards-row" id="trendingRow">
+        <!-- Skeletons mientras carga -->
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+    </section>
+
+    <!-- Banner destacado -->
+    <div class="featured-banner" onclick="goTo('series.html')">
+      <div class="featured-banner-bg"></div>
+      <div class="featured-banner-gradient"></div>
+      <div class="featured-banner-content">
+        <div class="featured-label">⚡ Nuevo en Series</div>
+        <h2>Explora cientos de series</h2>
+        <a class="featured-banner-btn">
+          Ver series
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Películas recientes -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">🎬 Películas Recientes</h2>
+        <a href="movies.html" class="section-link">Ver todo →</a>
+      </div>
+      <div class="cards-row" id="moviesRow">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+    </section>
+
+    <!-- Series populares -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">📺 Series Populares</h2>
+        <a href="series.html" class="section-link">Ver todo →</a>
+      </div>
+      <div class="cards-row" id="seriesRow">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+    </section>
+
+    <!-- TV en Vivo -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">📡 TV en Vivo</h2>
+        <a href="live.html" class="section-link">Ver todos →</a>
+      </div>
+      <div class="cards-row" id="liveRow">
+        <div class="skeleton skeleton-card" style="height:180px; flex:0 0 240px;"></div>
+        <div class="skeleton skeleton-card" style="height:180px; flex:0 0 240px;"></div>
+        <div class="skeleton skeleton-card" style="height:180px; flex:0 0 240px;"></div>
+        <div class="skeleton skeleton-card" style="height:180px; flex:0 0 240px;"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer>
+    <div class="footer-top">
+      <div class="footer-brand">
+        <h3>CINE<span>STREAM</span></h3>
+        <p>Tu plataforma de streaming gratuita. Disfruta miles de películas, series y canales de TV en vivo sin costo.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Explorar</h4>
+        <ul>
+          <li><a href="movies.html">Películas</a></li>
+          <li><a href="series.html">Series</a></li>
+          <li><a href="live.html">TV en Vivo</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Cuenta</h4>
+        <ul>
+          <li><a href="login.html">Iniciar sesión</a></li>
+          <li><a href="register.html">Registrarse</a></li>
+          <li><a href="profile.html">Mi perfil</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Info</h4>
+        <ul>
+          <li><a href="#">Acerca de</a></li>
+          <li><a href="#">Contacto</a></li>
+          <li><a href="#">Privacidad</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 CineStream. Hecho con ❤️</p>
+      <p style="color:var(--text-muted); font-size:0.78rem;">Solo para uso personal. Respeta los derechos de autor.</p>
+    </div>
+  </footer>
+
+  <!-- ═══ MODAL ═══ -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" id="modal">
+      <div class="modal-backdrop">
+        <img id="modalBackdrop" src="" alt="">
+        <div class="modal-backdrop-gradient"></div>
+        <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('open')">✕</button>
+      </div>
+      <div class="modal-body">
+        <h2 class="modal-title" id="modalTitle"></h2>
+        <div class="modal-meta" id="modalMeta"></div>
+        <p class="modal-desc" id="modalDesc"></p>
+        <div class="modal-actions">
+          <button class="btn-play" id="modalPlayBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Ver ahora
+          </button>
+          <button class="btn-info" id="modalFavBtn" style="gap:6px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            Favorito
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TOAST CONTAINER ═══ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ═══════════════════════════════════════
+       JAVASCRIPT PRINCIPAL
+  ═══════════════════════════════════════ -->
+  <script>
+    // ─── CONFIGURACIÓN SUPABASE ───────────────────────────────
+    // ⚠️ Reemplaza estos valores con los tuyos de Supabase
+    const SUPABASE_URL = 'https://hitfonmtelltpesotuhd.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpdGZvbm10ZWxsdHBlc290dWhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzY0MjEsImV4cCI6MjA5MjkxMjQyMX0.Mc5r5VuIzZ27U0toY3WMD2dYdFFmix_1BHP84yIbVsQ';
+
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ─── VARIABLES GLOBALES ───────────────────────────────────
+    let currentUser = null;
+    let currentModal = null;
+
+    // ─── NAVBAR SCROLL ────────────────────────────────────────
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+    });
+
+    // ─── HELPERS ──────────────────────────────────────────────
+    function goTo(url) { window.location.href = url; }
+
+    function toast(msg, type = 'info') {
+      const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+      document.getElementById('toastContainer').appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }
+
+    function starIcon() {
+      return `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    }
+
+    function playIcon() {
+      return `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+    }
+
+    function heartIcon() {
+      return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+    }
+
+    // ─── CREAR CARD ───────────────────────────────────────────
+    function createCard(item, type) {
+      const poster = item.poster_url || `https://via.placeholder.com/180x270/141920/5a6272?text=${encodeURIComponent(item.title)}`;
+      const year = item.year || '';
+      const rating = item.rating ? item.rating.toFixed(1) : '—';
+      const isNew = (new Date() - new Date(item.created_at)) < 7 * 24 * 60 * 60 * 1000;
+
+      return `
+        <div class="card" onclick="openModal('${item.id}', '${type}')">
+          <div class="card-img-wrap">
+            <img src="${poster}" alt="${item.title}" loading="lazy"
+                 onerror="this.src='https://via.placeholder.com/180x270/141920/5a6272?text=Sin+Poster'">
+            ${isNew ? '<span class="card-badge new">NUEVO</span>' : '<span class="card-badge hd">HD</span>'}
+            <div class="card-overlay">
+              <div class="card-play-btn">${playIcon()}</div>
+              <div class="card-actions">
+                <button class="card-action-btn" onclick="event.stopPropagation(); addFav('${item.id}', '${type}')" title="Favorito">${heartIcon()}</button>
+              </div>
+            </div>
+          </div>
+          <div class="card-info">
+            <div class="card-title">${item.title}</div>
+            <div class="card-meta">
+              <span class="card-year">${year}</span>
+              <span class="card-rating">${starIcon()} ${rating}</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ─── CREAR CARD LIVE ──────────────────────────────────────
+    function createLiveCard(channel) {
+      const logo = channel.logo_url || `https://via.placeholder.com/80x80/141920/5a6272?text=${channel.name[0]}`;
+      return `
+        <div class="card-live" onclick="goTo('watch.html?id=${channel.id}&type=channel')">
+          <div class="card-live-thumb">
+            <img src="${logo}" alt="${channel.name}" loading="lazy"
+                 onerror="this.style.display='none'">
+            <div class="live-indicator"><div class="live-dot"></div> EN VIVO</div>
+          </div>
+          <div class="card-live-info">
+            <div class="card-live-name">${channel.name}</div>
+            <div class="card-live-cat">${channel.category || 'General'}</div>
+          </div>
+        </div>`;
+    }
+
+    // ─── CARGAR DATOS DESDE SUPABASE ──────────────────────────
+    async function loadContent() {
+      try {
+        // Película destacada (hero)
+        const { data: featured } = await db
+          .from('movies')
+          .select('*')
+          .eq('is_featured', true)
+          .eq('is_active', true)
+          .limit(1)
+          .single();
+
+        if (featured) setHero(featured);
+
+        // Tendencias (más vistas)
+        const { data: trending } = await db
+          .from('movies')
+          .select('*')
+          .eq('is_active', true)
+          .order('views', { ascending: false })
+          .limit(12);
+
+        renderRow('trendingRow', trending || [], 'movie');
+
+        // Películas recientes
+        const { data: movies } = await db
+          .from('movies')
+          .select('*')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(12);
+
+        renderRow('moviesRow', movies || [], 'movie');
+
+        // Series
+        const { data: series } = await db
+          .from('series')
+          .select('*')
+          .eq('is_active', true)
+          .order('views', { ascending: false })
+          .limit(10);
+
+        renderRow('seriesRow', series || [], 'series');
+
+        // Canales live
+        const { data: channels } = await db
+          .from('live_channels')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order')
+          .limit(10);
+
+        renderLiveRow('liveRow', channels || []);
+
+      } catch (err) {
+        console.error('Error cargando contenido:', err);
+        // Mostrar datos de demo si Supabase no está configurado
+        loadDemoContent();
+      }
+    }
+
+    function renderRow(rowId, items, type) {
+      const row = document.getElementById(rowId);
+      if (!items.length) {
+        row.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; padding:20px 0;">No hay contenido aún.</p>';
+        return;
+      }
+      row.innerHTML = items.map(item => createCard(item, type)).join('');
+    }
+
+    function renderLiveRow(rowId, channels) {
+      const row = document.getElementById(rowId);
+      if (!channels.length) {
+        row.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; padding:20px 0;">No hay canales activos.</p>';
+        return;
+      }
+      row.innerHTML = channels.map(ch => createLiveCard(ch)).join('');
+    }
+
+    // ─── HERO ─────────────────────────────────────────────────
+    function setHero(item) {
+      if (item.backdrop_url) {
+        document.getElementById('heroBg').style.backgroundImage = `url('${item.backdrop_url}')`;
+      }
+      document.getElementById('heroTitle').textContent = item.title;
+      document.getElementById('heroRating').innerHTML = `${starIcon()} ${item.rating ? item.rating.toFixed(1) : '?'}`;
+      document.getElementById('heroYear').textContent = item.year || '';
+      document.getElementById('heroDuration').textContent = item.duration ? `${Math.floor(item.duration/60)}h ${item.duration%60}min` : '';
+      document.getElementById('heroDesc').textContent = item.description || '';
+
+      const genresEl = document.getElementById('heroGenres');
+      if (item.genres && item.genres.length) {
+        genresEl.innerHTML = item.genres.slice(0,3).map(g => `<span class="genre-tag">${g}</span>`).join('');
+      }
+
+      document.getElementById('heroPlayBtn').onclick = () => goTo(`watch.html?id=${item.id}&type=movie`);
+      document.getElementById('heroInfoBtn').onclick = () => openModal(item.id, 'movie');
+    }
+
+    // ─── MODAL ────────────────────────────────────────────────
+    async function openModal(id, type) {
+      const table = type === 'series' ? 'series' : 'movies';
+      try {
+        const { data: item } = await db.from(table).select('*').eq('id', id).single();
+        if (!item) return;
+        currentModal = item;
+
+        document.getElementById('modalBackdrop').src = item.backdrop_url || item.poster_url || '';
+        document.getElementById('modalTitle').textContent = item.title;
+        document.getElementById('modalDesc').textContent = item.description || 'Sin descripción.';
+
+        const meta = document.getElementById('modalMeta');
+        meta.innerHTML = `
+          <span style="color:var(--gold); font-weight:700; display:flex; align-items:center; gap:4px;">${starIcon()} ${item.rating || '—'}</span>
+          <span style="color:var(--text-secondary)">${item.year || ''}</span>
+          ${item.genres ? item.genres.map(g => `<span class="genre-tag">${g}</span>`).join('') : ''}
+        `;
+
+        document.getElementById('modalPlayBtn').onclick = () => goTo(`watch.html?id=${id}&type=${type}`);
+        document.getElementById('modalOverlay').classList.add('open');
+      } catch(e) { console.error(e); }
+    }
+
+    function closeModal(e) {
+      if (e.target.id === 'modalOverlay') {
+        document.getElementById('modalOverlay').classList.remove('open');
+      }
+    }
+
+    // ─── FAVORITOS ────────────────────────────────────────────
+    async function addFav(id, type) {
+      if (!currentUser) { toast('Inicia sesión para guardar favoritos', 'info'); return; }
+      try {
+        await db.from('favorites').upsert({ user_id: currentUser.id, content_type: type, content_id: id });
+        toast('Agregado a favoritos ❤️', 'success');
+      } catch(e) { toast('Error al guardar', 'error'); }
+    }
+
+    // ─── AUTH STATE ───────────────────────────────────────────
+    async function checkAuth() {
+      const { data: { session } } = await db.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        const { data: profile } = await db.from('profiles').select('*').eq('id', currentUser.id).single();
+        document.getElementById('authButtons').style.display = 'none';
+        document.getElementById('userMenu').style.display = 'flex';
+        if (profile) {
+          document.getElementById('userAvatar').textContent = (profile.username || 'U')[0].toUpperCase();
+        }
+      }
+    }
+
+    // ─── BÚSQUEDA ─────────────────────────────────────────────
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const q = e.target.value.trim();
+        if (q.length > 2) goTo(`movies.html?search=${encodeURIComponent(q)}`);
+      }, 500);
+    });
+
+    // ─── DEMO DATA (si Supabase no está configurado) ──────────
+    function loadDemoContent() {
+      const demoMovies = [
+        { id:'1', title:'Dune: Parte 2', year:2024, rating:8.5, poster_url:'https://image.tmdb.org/t/p/w342/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg', created_at: new Date() },
+        { id:'2', title:'Oppenheimer', year:2023, rating:8.9, poster_url:'https://image.tmdb.org/t/p/w342/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg', created_at: new Date() },
+        { id:'3', title:'Avatar 2', year:2022, rating:7.6, poster_url:'https://image.tmdb.org/t/p/w342/t6HIqrRAclMCA60NsSbj3aXZhDC.jpg', created_at: new Date() },
+        { id:'4', title:'Interstellar', year:2014, rating:8.7, poster_url:'https://image.tmdb.org/t/p/w342/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg', created_at: new Date() },
+        { id:'5', title:'The Batman', year:2022, rating:7.9, poster_url:'https://image.tmdb.org/t/p/w342/74xTpanfbyQhNtsfXFHPj2v4Qpl.jpg', created_at: new Date() },
+        { id:'6', title:'Inception', year:2010, rating:8.8, poster_url:'https://image.tmdb.org/t/p/w342/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg', created_at: new Date() },
+      ];
+
+      const demoChs = [
+        { id:'c1', name:'CNN en Español', category:'Noticias', logo_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/CNN.svg/120px-CNN.svg.png' },
+        { id:'c2', name:'ESPN', category:'Deportes', logo_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/ESPN_wordmark.svg/120px-ESPN_wordmark.svg.png' },
+        { id:'c3', name:'Discovery', category:'Documentales', logo_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Discovery_Channel_logo.svg/120px-Discovery_Channel_logo.svg.png' },
+        { id:'c4', name:'National Geographic', category:'Documentales', logo_url:'' },
+      ];
+
+      // Hero demo
+      document.getElementById('heroBg').style.backgroundImage = `url('https://image.tmdb.org/t/p/original/1E5baAaEse26fej7uHcjOgEE2t2.jpg')`;
+      document.getElementById('heroTitle').textContent = 'Dune: Parte 2';
+      document.getElementById('heroRating').innerHTML = `${starIcon()} 8.5`;
+      document.getElementById('heroYear').textContent = '2024';
+      document.getElementById('heroDuration').textContent = '2h 46min';
+      document.getElementById('heroDesc').textContent = 'Paul Atreides se une a los Fremen y comienza un viaje espiritual y marcial para convertirse en el Muad\'Dib. Deberá decidir si renunciar al amor de su vida para salvar el universo conocido.';
+      document.getElementById('heroGenres').innerHTML = ['Sci-Fi','Acción','Drama'].map(g => `<span class="genre-tag">${g}</span>`).join('');
+
+      renderRow('trendingRow', demoMovies, 'movie');
+      renderRow('moviesRow', [...demoMovies].reverse(), 'movie');
+      renderRow('seriesRow', demoMovies.slice(0,5), 'series');
+      renderLiveRow('liveRow', demoChs);
+    }
+
+    // ─── INIT ─────────────────────────────────────────────────
+    (async () => {
+      await checkAuth();
+      await loadContent();
+    })();
+  </script>
+</body>
+</html>
