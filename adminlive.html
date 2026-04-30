@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Admin TV en Vivo — CineStream</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600&family=Nunito:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  background: #090b0f;
+  color: white;
+  font-family: 'Nunito';
+  padding: 20px;
+}
+
+h1 {
+  font-family: 'Oswald';
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 6px;
+  border: none;
+}
+
+button {
+  background: #e50914;
+  color: white;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#result {
+  margin-top: 20px;
+  max-height: 400px;
+  overflow: auto;
+}
+
+.card {
+  background: #141920;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📡 Importar Lista M3U</h1>
+
+<input id="m3uUrl" placeholder="http://eszeada.top:8080/get.php?username=es1821731067855001&password=179f1cc5ab05&type=m3u_plus&output=m3u8">
+<button onclick="importM3U()">Importar</button>
+
+<div id="result"></div>
+
+<script>
+const SUPABASE_URL = 'https://hitfonmtelltpesotuhd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm10ZWxsdHBlc290dWhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzY0MjEsImV4cCI6MjA5MjkxMjQyMX0.Mc5r5VuIzZ27U0toY3WMD2dYdFFmix_1BHP84yIbVsQ';
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function importM3U() {
+  const url = document.getElementById('m3uUrl').value;
+  if (!url) return alert("Pega la URL");
+
+  const res = await fetch(url);
+  const text = await res.text();
+
+  const lines = text.split("\n");
+
+  let channels = [];
+  let current = {};
+
+  lines.forEach(line => {
+    if (line.startsWith("#EXTINF")) {
+      const name = line.split(",")[1];
+      current = { name };
+    } else if (line.startsWith("http")) {
+      current.url = line.trim();
+      channels.push(current);
+    }
+  });
+
+  // Mostrar
+  const result = document.getElementById('result');
+  result.innerHTML = "";
+
+  channels.slice(0, 50).forEach(c => {
+    result.innerHTML += `
+      <div class="card">
+        ${c.name}
+      </div>
+    `;
+  });
+
+  // Guardar en Supabase
+  for (let c of channels) {
+    await db.from('live_channels').insert([{
+      name: c.name,
+      stream_url: c.url
+    }]);
+  }
+
+  alert("Importación completada");
+}
+</script>
+
+</body>
+</html>
