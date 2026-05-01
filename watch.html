@@ -3,141 +3,121 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reproducir — CineStream</title>
+<title>Importador M3U — CineStream</title>
 
-<!-- Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600&family=Nunito:wght@300;400;600&display=swap" rel="stylesheet">
-
-<!-- Plyr -->
-<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
-
-<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body {
-  margin: 0;
-  background: #000;
-  font-family: 'Nunito', sans-serif;
-  color: white;
+body{
+  background:#090b0f;
+  color:white;
+  font-family:Arial;
+  padding:20px;
 }
-
-.player-container {
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
+input,button{
+  padding:10px;
+  margin:5px 0;
 }
-
-video {
-  width: 100%;
-  height: 100%;
-}
-
-.top-bar {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 10;
-}
-
-.back-btn {
-  background: rgba(0,0,0,0.6);
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
+button{
+  background:#e50914;
+  border:none;
+  color:white;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="player-container">
+<h2>📡 Importar M3U</h2>
 
-  <div class="top-bar">
-    <div class="back-btn" onclick="history.back()">← Volver</div>
-  </div>
+<input id="m3uUrl" placeholder="Pega tu URL M3U aquí">
 
-  <video id="player" controls playsinline></video>
+<button onclick="fetchM3U()">Cargar lista</button>
+<button onclick="startImport()">Importar</button>
 
-</div>
-
-<!-- HLS -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+<div id="result"></div>
 
 <script>
 const SUPABASE_URL = 'https://hitfonmtelltpesotuhd.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpdGZvbm10ZWxsdHBlc290dWhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzY0MjEsImV4cCI6MjA5MjkxMjQyMX0.Mc5r5VuIzZ27U0toY3WMD2dYdFFmix_1BHP84yIbVsQ';
+const SUPABASE_ANON_KEY = 'TU_KEY_AQUI';
 
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const video = document.getElementById('player');
-const player = new Plyr(video);
+let canales = [];
 
-const params = new URLSearchParams(window.location.search);
-const url = params.get('url'); // video url
-const type = params.get('type'); // movie | series | live
+// 🔥 CARGAR M3U
+async function fetchM3U(){
+  const url = document.getElementById('m3uUrl').value;
 
-// ===== REPRODUCCIÓN =====
-function loadVideo(src) {
-  if (src.endsWith('.m3u8')) {
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(src);
-      hls.attachMedia(video);
-    } else {
-      video.src = src;
+  if(!url){
+    alert("Pega la URL");
+    return;
+  }
+
+  try{
+    const res = await fetch(url);
+    const text = await res.text();
+
+    parseM3U(text);
+
+  }catch(e){
+    alert("Error al cargar (CORS o URL inválida)");
+    console.error(e);
+  }
+}
+
+// 🔥 PARSEAR
+function parseM3U(text){
+
+  const lines = text.split("\n");
+
+  canales = [];
+  let actual = null;
+
+  lines.forEach(line => {
+
+    if(line.startsWith("#EXTINF")){
+      const name = line.split(",")[1] || "Sin nombre";
+      actual = { name };
     }
-  } else {
-    video.src = src;
-  }
-}
 
-// ===== GUARDAR PROGRESO =====
-async function saveProgress() {
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return;
+    else if(line.startsWith("http") && actual){
+      actual.stream_url = line.trim();
+      canales.push(actual);
+      actual = null;
+    }
 
-  await db.from('watch_history').upsert({
-    user_id: user.id,
-    video_url: url,
-    progress: video.currentTime
   });
+
+  document.getElementById('result').innerHTML =
+    "Canales encontrados: " + canales.length;
 }
 
-// ===== CARGAR PROGRESO =====
-async function loadProgress() {
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return;
+// 🔥 IMPORTAR A SUPABASE (CORREGIDO)
+async function startImport(){
 
-  const { data } = await db
-    .from('watch_history')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('video_url', url)
-    .single();
-
-  if (data && data.progress) {
-    video.currentTime = data.progress;
+  if(canales.length === 0){
+    alert("Primero carga la lista");
+    return;
   }
-}
 
-// ===== EVENTOS =====
-video.addEventListener('timeupdate', () => {
-  if (Math.floor(video.currentTime) % 10 === 0) {
-    saveProgress();
+  let insertados = 0;
+
+  for(let c of canales.slice(0,200)){
+
+    const { error } = await db.from('live_channels').insert({
+      name: c.name,
+      logo_url: null,
+      category: "General",
+      stream_url: c.stream_url
+    });
+
+    if(!error) insertados++;
   }
-});
 
-video.addEventListener('loadedmetadata', loadProgress);
-
-// ===== INIT =====
-if (!url) {
-  alert("No hay video");
-} else {
-  loadVideo(url);
+  alert("Importados: " + insertados);
 }
 </script>
 
