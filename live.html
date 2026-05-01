@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>TV en Vivo</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style>
+body {
+  background:#090b0f;
+  color:white;
+  font-family:Arial;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:15px;
+  padding:20px;
+}
+
+.card {
+  background:#141920;
+  padding:10px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+video {
+  width:100%;
+  max-height:400px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📡 TV en Vivo</h1>
+
+<video id="player" controls></video>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const SUPABASE_URL = 'https://hitfonmtelltpesotuhd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpdGZvbm10ZWxsdHBlc290dWhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzY0MjEsImV4cCI6MjA5MjkxMjQyMX0.Mc5r5VuIzZ27U0toY3WMD2dYdFFmix_1BHP84yIbVsQ';
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// 🔥 CARGAR CANALES
+async function loadChannels() {
+  const { data } = await db
+    .from('live_channels')
+    .select('*')
+    .limit(200);
+
+  const grid = document.getElementById('grid');
+
+  data.forEach(c => {
+    grid.innerHTML += `
+      <div class="card" onclick="play('${c.stream_url}')">
+        ${c.name}
+      </div>
+    `;
+  });
+}
+
+// ▶️ REPRODUCIR
+function play(url) {
+  const video = document.getElementById('player');
+
+  if (Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(url);
+    hls.attachMedia(video);
+  } else {
+    video.src = url;
+  }
+}
+
+loadChannels();
+</script>
+
+</body>
+</html>
