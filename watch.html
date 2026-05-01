@@ -57,7 +57,9 @@ async function fetchM3U(){
   }
 
   try{
-    const res = await fetch(url);
+    const proxy = "https://api.allorigins.win/raw?url=";
+    const res = await fetch(proxy + encodeURIComponent(url));
+
     const text = await res.text();
 
     parseM3U(text);
