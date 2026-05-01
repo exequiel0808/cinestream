@@ -72,12 +72,26 @@ async function loadChannels() {
 function play(url) {
   const video = document.getElementById('player');
 
+  if (window.hls) {
+    window.hls.destroy();
+  }
+
   if (Hls.isSupported()) {
-    const hls = new Hls();
+    const hls = new Hls({
+      xhrSetup: function (xhr) {
+        xhr.setRequestHeader('User-Agent', 'Mozilla/5.0');
+      }
+    });
+
     hls.loadSource(url);
     hls.attachMedia(video);
-  } else {
+
+    window.hls = hls;
+
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
+  } else {
+    alert("Este navegador no soporta HLS");
   }
 }
 
